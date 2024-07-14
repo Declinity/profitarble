@@ -57,13 +57,23 @@ const authPool = new Pool({
     password: 'Giratina2001!',
     port: 5432
 });
-const userArbsPool = new Pool({
+/* const userArbsPool = new Pool({
     user: 'postgres',
     host: 'localhost',
     database: 'UserArbs',
     password: 'Giratina2001!',
     port: 5432
-});
+}); */
+const userArbsPool = new Pool ({
+    user: 'delta',
+    host: 'dpg-cq9sbrjv2p9s73cnf10g-a.frankfurt-postgres.render.com',
+    database: 'profitarble',
+    password: 'IoGMw1VFObDs8jo9cyTsks2dWXNUY4yC',
+    port: 5432,
+    ssl: {
+        rejectUnauthorized: false
+    }
+})
 app.get('/api/user-arbs', async (req, res) => {
     const { authorization } = req.headers;
     if (!authorization) {
