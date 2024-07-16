@@ -42,7 +42,7 @@ let transporter = nodemailer.createTransport({
     secure: false, // MailHog doesn't use SSL
 });
 
-const arbsPool = new Pool({
+/* const db = new Pool({
     user: 'postgres',    // Replace with your PostgreSQL username
     host: 'localhost',        // Replace with your PostgreSQL server address
     database: 'Arbs', // Replace with your PostgreSQL database name
@@ -50,21 +50,21 @@ const arbsPool = new Pool({
     port: 5432                // Replace with your PostgreSQL port, if different
 });
 
-const authPool = new Pool({
+const db = new Pool({
     user: 'postgres',
     host: 'localhost',
     database: 'Authentication',
     password: 'Giratina2001!',
     port: 5432
-});
-/* const userArbsPool = new Pool({
+}); */
+/* const db = new Pool({
     user: 'postgres',
     host: 'localhost',
     database: 'UserArbs',
     password: 'Giratina2001!',
     port: 5432
 }); */
-const userArbsPool = new Pool ({
+const db = new Pool ({
     user: 'delta',
     host: 'dpg-cq9sbrjv2p9s73cnf10g-a.frankfurt-postgres.render.com',
     database: 'profitarble',
@@ -88,7 +88,7 @@ app.get('/api/user-arbs', async (req, res) => {
         const username = decoded.username;
 
         const userArbsQuery = 'SELECT Arbs FROM UserArbs WHERE "User" = $1';
-        const result = await userArbsPool.query(userArbsQuery, [username]);
+        const result = await db.query(userArbsQuery, [username]);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'No data found for user' });
@@ -117,7 +117,7 @@ app.post('/api/update-user-arbs', async (req, res) => {
 
         const arbs = req.body;
         const updateQuery = 'UPDATE UserArbs SET Arbs = $1 WHERE "User" = $2';
-        await userArbsPool.query(updateQuery, [JSON.stringify(arbs), username]);
+        await db.query(updateQuery, [JSON.stringify(arbs), username]);
 
         res.send('Arbs updated successfully');
     } catch (error) {
@@ -206,7 +206,7 @@ app.post('/stripe-update', async (req, res) => {
                         WHERE username = $3
                         RETURNING *;`;
 
-            const result = await authPool.query(insertOrUpdateUserQuery, [customerId, formattedExpDate, username]);
+            const result = await db.query(insertOrUpdateUserQuery, [customerId, formattedExpDate, username]);
             if (result.rows.length > 0) {
                 console.log('Subscription created and user updated:', result.rows[0]);
             } else {
@@ -235,7 +235,7 @@ app.post('/stripe-update', async (req, res) => {
                 RETURNING *;`;
 
             try {
-                const result = await authPool.query(updateQuery, [formattedExpDate, customerId]);
+                const result = await db.query(updateQuery, [formattedExpDate, customerId]);
                 if (result.rows.length > 0) {
                     console.log('Updated user:', result.rows[0]);
                 } else {
@@ -254,7 +254,7 @@ app.post('/stripe-update', async (req, res) => {
                 RETURNING *;`;
 
             try {
-                const result = await authPool.query(updateQuery, [customerId]);
+                const result = await db.query(updateQuery, [customerId]);
                 if (result.rows.length > 0) {
                     console.log('Subscription marked as past_due:', result.rows[0]);
                 } else {
@@ -284,7 +284,7 @@ app.post('/api/cancel-subscription', async (req, res) => {
             FROM users 
             WHERE username = $1;
         `;
-        const userResult = await authPool.query(userQuery, [username]);
+        const userResult = await db.query(userQuery, [username]);
 
         if (userResult.rows.length === 0) {
             return res.status(404).send('User not found');
@@ -311,7 +311,7 @@ app.post('/api/cancel-subscription', async (req, res) => {
             WHERE username = $1
             RETURNING *;`;
 
-        const updateResult = await authPool.query(updateQuery, [username]);
+        const updateResult = await db.query(updateQuery, [username]);
         if (updateResult.rows.length > 0) {
             console.log('Subscription cancelled and user updated:', updateResult.rows[0]);
             res.json({ message: 'Subscription cancelled successfully' });
@@ -338,7 +338,7 @@ app.post('/api/save-arb', async (req, res) => {
             const userCheckQuery = `
                 SELECT * FROM UserArbs WHERE "User" = $1;
             `;
-            const userResult = await userArbsPool.query(userCheckQuery, [user.username]);
+            const userResult = await db.query(userCheckQuery, [user.username]);
 
             if (userResult.rows.length > 0) {
                 // User exists, load current arbs and update them
@@ -361,14 +361,14 @@ app.post('/api/save-arb', async (req, res) => {
                     SET arbs = $2
                     WHERE "User" = $1;
                 `;
-                await userArbsPool.query(updateArbsQuery, [user.username, JSON.stringify(updatedArbs)]);
+                await db.query(updateArbsQuery, [user.username, JSON.stringify(updatedArbs)]);
             } else {
                 // User does not exist, insert new row
                 const insertUserQuery = `
                     INSERT INTO UserArbs ("User", arbs)
                     VALUES ($1, $2);
                 `;
-                await userArbsPool.query(insertUserQuery, [user.username, JSON.stringify([entry])]);
+                await db.query(insertUserQuery, [user.username, JSON.stringify([entry])]);
             }
 
             res.status(200).send('Arb saved successfully');
@@ -396,12 +396,12 @@ app.get('/api/matches', (req, res) => {
                 FROM users 
                 WHERE username = $1;
             `;
-            const userResult = await authPool.query(userQuery, [user.username]);
+            const userResult = await db.query(userQuery, [user.username]);
             const userData = userResult.rows[0];
             const isFreeTrialExpired = userData && userData.freetrial && new Date(userData.freetrialexpdate) > new Date();
             const isProVersionActive = userData && new Date(userData.proversionexpdate) > new Date();
 
-            arbsPool.query("SELECT Match, Arbs, Links FROM matches", (err, matchResult) => {
+            db.query("SELECT Match, Arbs, Links FROM matches", (err, matchResult) => {
                 if (err) {
                     res.status(500).send(err.message);
                     return;
@@ -443,7 +443,7 @@ app.post('/api/signup', async (req, res) => {
 
     try {
         // Check if a user with the same email or username already exists
-        const checkUser = await authPool.query('SELECT * FROM users WHERE email = $1 OR username = $2', [email, username]);
+        const checkUser = await db.query('SELECT * FROM users WHERE email = $1 OR username = $2', [email, username]);
 
         if (checkUser.rows.length > 0) {
             if (checkUser.rows[0].email === email) {
@@ -458,7 +458,7 @@ app.post('/api/signup', async (req, res) => {
             INSERT INTO users (name, surname, username, email, password, verification_token)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *;`;
-        const newUser = await authPool.query(insertQuery, [name, surname, username, email, hashedPassword, verificationToken]);
+        const newUser = await db.query(insertQuery, [name, surname, username, email, hashedPassword, verificationToken]);
 
         // Send verification email
         const verificationUrl = `http://localhost:3001/api/verify-email?token=${verificationToken}`;
@@ -486,13 +486,13 @@ app.get('/api/verify-email', async (req, res) => {
     const { token } = req.query;
 
     try {
-        const userQuery = await authPool.query('SELECT * FROM users WHERE verification_token = $1', [token]);
+        const userQuery = await db.query('SELECT * FROM users WHERE verification_token = $1', [token]);
 
         if (userQuery.rows.length === 0) {
             return res.status(400).send('Invalid token');
         }
 
-        await authPool.query('UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE verification_token = $1', [token]);
+        await db.query('UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE verification_token = $1', [token]);
 
         res.status(200).send(`
             <html>
@@ -530,7 +530,7 @@ app.post('/api/start-free-trial', async (req, res) => {
                 SET freeTrial = TRUE, freeTrialExpDate = $1 
                 WHERE username = $2
                 RETURNING *;`;
-            const updatedUser = await authPool.query(updateQuery, [oneWeekFromNow, username]);
+            const updatedUser = await db.query(updateQuery, [oneWeekFromNow, username]);
 
             if (updatedUser.rows.length === 0) {
                 // No user found with this username
@@ -557,7 +557,7 @@ app.post('/api/start-paid-trial', async (req, res) => {
             FROM users 
             WHERE username = $1;
         `;
-        const userData = await authPool.query(userF, [username]);
+        const userData = await db.query(userF, [username]);
         const { paymentMethodId } = req.body;
         if (userData.rows.length === 0) {
             // No user found with this username
@@ -576,7 +576,7 @@ app.post('/api/start-paid-trial', async (req, res) => {
                     },
                 });
                 const updateCustomerQuery = `UPDATE users SET stripeCustomerId = $1 WHERE username = $2`;
-                await authPool.query(updateCustomerQuery, [customer.id, username]);
+                await db.query(updateCustomerQuery, [customer.id, username]);
             }
 
             // Assuming you have a predefined price ID for the subscription
@@ -596,7 +596,7 @@ app.post('/api/start-paid-trial', async (req, res) => {
                 SET proVersion = TRUE, proVersionExpDate = $1 
                 WHERE username = $2
                 RETURNING *;`;
-            const updatedUser = await authPool.query(updateSubscriptionQuery, [oneWeekFromNow, username]);
+            const updatedUser = await db.query(updateSubscriptionQuery, [oneWeekFromNow, username]);
 
             res.status(200).json({
                 subscriptionId: subscription.id,
@@ -622,7 +622,7 @@ app.get('/api/user-trial-status', async (req, res) => {
             FROM users 
             WHERE username = $1;
         `;
-        const result = await authPool.query(userQuery, [username]);
+        const result = await db.query(userQuery, [username]);
 
         if (result.rows.length === 0) {
             return res.status(404).send('User not found');
@@ -639,7 +639,7 @@ app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
 
     try {
-        const userQuery = await authPool.query('SELECT * FROM users WHERE username = $1', [username]);
+        const userQuery = await db.query('SELECT * FROM users WHERE username = $1', [username]);
 
         if (userQuery.rows.length === 0) {
             return res.status(404).send('User not found');
@@ -667,7 +667,7 @@ app.post('/api/resend-verification-email', async (req, res) => {
     const { email } = req.body;
 
     try {
-        const userQuery = await authPool.query('SELECT * FROM users WHERE email = $1', [email]);
+        const userQuery = await db.query('SELECT * FROM users WHERE email = $1', [email]);
 
         if (userQuery.rows.length === 0) {
             return res.status(404).send('User not found');
@@ -679,7 +679,7 @@ app.post('/api/resend-verification-email', async (req, res) => {
         }
 
         const verificationToken = crypto.randomBytes(32).toString('hex');
-        await authPool.query('UPDATE users SET verification_token = $1 WHERE email = $2', [verificationToken, email]);
+        await db.query('UPDATE users SET verification_token = $1 WHERE email = $2', [verificationToken, email]);
 
         const verificationUrl = `http://localhost:3001/api/verify-email?token=${verificationToken}`;
         const mailOptions = {
@@ -706,7 +706,7 @@ app.get('/api/get-email', async (req, res) => {
     const { username } = req.query;
 
     try {
-        const userQuery = await authPool.query('SELECT email FROM users WHERE username = $1', [username]);
+        const userQuery = await db.query('SELECT email FROM users WHERE username = $1', [username]);
 
         if (userQuery.rows.length === 0) {
             return res.status(404).send('User not found');
