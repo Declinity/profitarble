@@ -22,7 +22,7 @@ app.use(bodyParser.json({
 
 app.use(cookieParser()); // Use cookie-parser middleware
 const corsOptions = {
-    origin: 'http://127.0.0.1:5173',  // Only allow requests from this origin
+    origin: 'https://profitarbleweb.onrender.com',  // Only allow requests from this origin
     optionsSuccessStatus: 200,
     credentials: true
 };
