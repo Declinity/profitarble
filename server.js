@@ -206,7 +206,7 @@ app.post('/stripe-update', async (req, res) => {
     const sig = req.headers['stripe-signature'];
     let event;
     try {
-        event = stripe.webhooks.constructEvent(req.rawBody, sig, 'whsec_CIZ49OWa7pXRb2CQo4f7RELX8ZcTtCsX');
+        event = stripe.webhooks.constructEvent(req.rawBody, sig, 'whsec_RGM0HX6VuXfthS8xu9CdpVh4XODQ2xst');
         eventData = event.data.object
         if (event.type === 'checkout.session.completed') {
             const subscriptionId = eventData.subscription;
