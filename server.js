@@ -214,6 +214,7 @@ app.post('/stripe-update', async (req, res) => {
             const subscription = await stripe.subscriptions.retrieve(subscriptionId);
             const priceId = subscription.items.data[0].price.id;
             console.log('Price ID:', priceId);
+            console.log(eventData)
             const customerId = eventData.customer;
             const username = eventData.client_reference_id;
             const expirationDate = new Date();
