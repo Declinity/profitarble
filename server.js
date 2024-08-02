@@ -166,8 +166,11 @@ app.post('/create-checkout-session', async (req, res) => {
                 mode: 'subscription',
                 success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
                 cancel_url: `${req.headers.origin}/cancel`,
-                client_reference_id: userId, // Securely pass the user ID
-                customer_email: userEmail // Prefill the email field
+                customer_email: userEmail, // Prefill the email field
+                custom_fields: [{
+                    name: 'client_reference_id',
+                    value: userId
+                }]
             });
 
             res.json({ url: session.url });
@@ -215,7 +218,7 @@ app.post('/stripe-update', async (req, res) => {
             const priceId = subscription.items.data[0].price.id;
             console.log('Price ID:', priceId);
             const customerId = eventData.customer;
-            const username = eventData.client_reference_id;
+            const username = eventData.custom_fields ? eventData.custom_fields.find(field => field.name === 'client_reference_id').value : null;
             const expirationDate = new Date();
             if (priceId === "price_1OmPa9IPN9UEEGy8IZF9grmN") {
                 expirationDate.setDate(expirationDate.getDate() + 7);
