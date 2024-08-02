@@ -208,8 +208,8 @@ app.post('/stripe-update', async (req, res) => {
     let event;
     try {
         event = stripe.webhooks.constructEvent(req.rawBody, sig, 'whsec_RGM0HX6VuXfthS8xu9CdpVh4XODQ2xst');
-        eventData = event.data.object
         if (event.type === 'checkout.session.completed') {
+            eventData = event.data.object
             const subscriptionId = eventData.subscription;
             const subscription = await stripe.subscriptions.retrieve(subscriptionId);
             const priceId = subscription.items.data[0].price.id;
