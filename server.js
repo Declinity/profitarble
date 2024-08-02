@@ -132,8 +132,25 @@ app.post('/create-checkout-session', async (req, res) => {
 
     jwt.verify(token, 'siuu', async (err, user) => {
         if (err) return res.sendStatus(403);
-        userId = user.username
+        
+        const userId = user.username;
+
         try {
+            // Fetch user email from the database
+            const userQuery = `
+                SELECT email
+                FROM users 
+                WHERE username = $1;
+            `;
+            const userData = await db.query(userQuery, [userId]);
+
+            if (userData.rows.length === 0) {
+                // No user found with this username
+                return res.status(404).send('User not recognized');
+            }
+
+            const userEmail = userData.rows[0].email;
+
             const session = await stripe.checkout.sessions.create({
                 payment_method_types: ['card', 'paypal'],
                 line_items: [{
@@ -144,13 +161,14 @@ app.post('/create-checkout-session', async (req, res) => {
                 success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
                 cancel_url: `${req.headers.origin}/cancel`,
                 client_reference_id: userId, // Securely pass the user ID
+                customer_email: userEmail // Prefill the email field
             });
 
             res.json({ url: session.url });
         } catch (error) {
             res.status(500).send({ error: error.message });
         }
-    })
+    });
 });
 app.post('/create-checkout-session-month', async (req, res) => {
     const authHeader = req.headers['authorization'];
@@ -461,7 +479,7 @@ app.post('/api/signup', async (req, res) => {
         const newUser = await db.query(insertQuery, [name, surname, username, email, hashedPassword, verificationToken]);
 
         // Send verification email
-        const verificationUrl = `http://localhost:3001/api/verify-email?token=${verificationToken}`;
+        const verificationUrl = `https://profitarble.onrender.com/api/verify-email?token=${verificationToken}`;
         const mailOptions = {
             from: '"Your App Name" <your-email@example.com>',
             to: email,
@@ -681,7 +699,7 @@ app.post('/api/resend-verification-email', async (req, res) => {
         const verificationToken = crypto.randomBytes(32).toString('hex');
         await db.query('UPDATE users SET verification_token = $1 WHERE email = $2', [verificationToken, email]);
 
-        const verificationUrl = `http://localhost:3001/api/verify-email?token=${verificationToken}`;
+        const verificationUrl = `https://profitarble.onrender.com/api/verify-email?token=${verificationToken}`;
         const mailOptions = {
             from: '"Your App Name" <your-email@example.com>',
             to: email,
