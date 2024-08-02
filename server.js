@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
@@ -69,10 +70,10 @@ const db = new Pool({
     port: 5432
 }); */
 const db = new Pool ({
-    user: 'delta',
-    host: 'dpg-cq9sbrjv2p9s73cnf10g-a.frankfurt-postgres.render.com',
-    database: 'profitarble',
-    password: 'IoGMw1VFObDs8jo9cyTsks2dWXNUY4yC',
+    user: process.env.DATABASE_USER,
+    host: process.env.DATABASE_HOST,
+    database: process.env.DATABASE_NAME,
+    password: process.env.DATABASE_PASSWORD,
     port: 5432,
     ssl: {
         rejectUnauthorized: false
@@ -521,7 +522,7 @@ app.get('/api/verify-email', async (req, res) => {
             <head>
                 <script type="text/javascript">
                     alert('Email verified successfully');
-                    window.location.href = 'http://127.0.0.1:5173/login';
+                    window.location.href = 'https://profitarbleweb.onrender.com/login';
                 </script>
             </head>
             <body>
