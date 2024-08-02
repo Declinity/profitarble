@@ -464,7 +464,7 @@ app.get('/api/username', (req, res) => {
     });
 });
 app.post('/api/signup', async (req, res) => {
-    const { name, surname, username, email, password } = req.body;
+    const { username, email, password } = req.body;
 
     try {
         // Check if a user with the same email or username already exists
@@ -477,13 +477,15 @@ app.post('/api/signup', async (req, res) => {
                 return res.status(409).send('Username already exists');
             }
         }
+        
         const hashedPassword = await bcrypt.hash(password, 10);
         const verificationToken = crypto.randomBytes(32).toString('hex');
+        
         const insertQuery = `
-            INSERT INTO users (name, surname, username, email, password, verification_token)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO users (username, email, password, verification_token)
+            VALUES ($1, $2, $3, $4)
             RETURNING *;`;
-        const newUser = await db.query(insertQuery, [name, surname, username, email, hashedPassword, verificationToken]);
+        const newUser = await db.query(insertQuery, [username, email, hashedPassword, verificationToken]);
 
         // Send verification email
         const verificationUrl = `https://profitarble.onrender.com/api/verify-email?token=${verificationToken}`;
@@ -507,6 +509,7 @@ app.post('/api/signup', async (req, res) => {
         res.status(500).send(err.message);
     }
 });
+
 app.get('/api/verify-email', async (req, res) => {
     const { token } = req.query;
 
