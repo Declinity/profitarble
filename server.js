@@ -485,7 +485,7 @@ app.post('/api/signup', async (req, res) => {
         // Send verification email
         const verificationUrl = `https://profitarble.onrender.com/api/verify-email?token=${verificationToken}`;
         const mailOptions = {
-            from: '"Your App Name" <your-email@example.com>',
+            from: '"Your App Name" <profitarbtest@outlook.com>',
             to: email,
             subject: "Email Verification",
             text: `Please verify your email by clicking the following link: ${verificationUrl}`,
