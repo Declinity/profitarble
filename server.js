@@ -6,7 +6,7 @@ const bcrypt = require('bcrypt'); // Import bcrypt
 const jwt = require('jsonwebtoken')
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
-const stripe = require('stripe')('sk_test_51OgqkWIPN9UEEGy8N8g88e19kSPmWuRGGTWpsxXrs5392bbvHoKXS5X5kW55iqACWaxoE4rTYJsH8BUy9V3vJLN800qJdYEk71');
+const stripe = require('stripe')(process.env.STRIPE_KEY);
 const bodyParser = require('body-parser');
 const nodemailer = require('nodemailer')
 const crypto = require('crypto');
@@ -89,7 +89,7 @@ app.get('/api/user-arbs', async (req, res) => {
         return res.status(401).json({ error: 'Malformed token' });
     }
     try {
-        const decoded = jwt.verify(token, 'siuu');
+        const decoded = jwt.verify(token, process.env.JWT_KEY);
         const username = decoded.username;
 
         const userArbsQuery = 'SELECT Arbs FROM UserArbs WHERE "User" = $1';
@@ -117,7 +117,7 @@ app.post('/api/update-user-arbs', async (req, res) => {
     }
 
     try {
-        const decoded = jwt.verify(token, 'siuu');
+        const decoded = jwt.verify(token, process.env.JWT_KEY);
         const username = decoded.username;
 
         const arbs = req.body;
@@ -135,7 +135,7 @@ app.post('/create-checkout-session', async (req, res) => {
     const token = authHeader && authHeader.split(' ')[1];
     if (!token) return res.sendStatus(401);
 
-    jwt.verify(token, 'siuu', async (err, user) => {
+    jwt.verify(token, process.env.JWT_KEY, async (err, user) => {
         if (err) return res.sendStatus(403);
         
         const userId = user.username;
@@ -159,7 +159,7 @@ app.post('/create-checkout-session', async (req, res) => {
             const session = await stripe.checkout.sessions.create({
                 payment_method_types: ['card', 'paypal'],
                 line_items: [{
-                    price: 'price_1OmPa9IPN9UEEGy8IZF9grmN',
+                    price: process.env.STRIPE_PRICE_WEEK,
                     quantity: 1,
                 }],
                 mode: 'subscription',
@@ -180,14 +180,14 @@ app.post('/create-checkout-session-month', async (req, res) => {
     const token = authHeader && authHeader.split(' ')[1];
     if (!token) return res.sendStatus(401);
 
-    jwt.verify(token, 'siuu', async (err, user) => {
+    jwt.verify(token, process.env.JWT_KEY, async (err, user) => {
         if (err) return res.sendStatus(403);
         userId = user.username
         try {
             const session = await stripe.checkout.sessions.create({
                 payment_method_types: ['card', 'paypal'],
                 line_items: [{
-                    price: 'price_1PAzjiIPN9UEEGy8KKf5GUWO',
+                    price: process.env.STRIPE_PRICE_MONTH,
                     quantity: 1,
                 }],
                 mode: 'subscription',
@@ -206,7 +206,7 @@ app.post('/stripe-update', async (req, res) => {
     const sig = req.headers['stripe-signature'];
     let event;
     try {
-        event = stripe.webhooks.constructEvent(req.rawBody, sig, 'whsec_35b859637e0b5e9b978bf8f74e35cde5cfdfd7e01a8512ef8833844a9d667bf9');
+        event = stripe.webhooks.constructEvent(req.rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET);
         eventData = event.data.object
         if (event.type === 'checkout.session.completed') {
             const subscriptionId = eventData.subscription;
@@ -216,9 +216,9 @@ app.post('/stripe-update', async (req, res) => {
             const customerId = eventData.customer;
             const username = eventData.client_reference_id;
             const expirationDate = new Date();
-            if (priceId === "price_1OmPa9IPN9UEEGy8IZF9grmN") {
+            if (priceId === process.env.STRIPE_PRICE_WEEK) {
                 expirationDate.setDate(expirationDate.getDate() + 7);
-            } else if (priceId === "price_1PAzjiIPN9UEEGy8KKf5GUWO") {
+            } else if (priceId === process.env.STRIPE_PRICE_MONTH) {
                 expirationDate.setDate(expirationDate.getDate() + 30);
             }
 
@@ -244,9 +244,9 @@ app.post('/stripe-update', async (req, res) => {
             console.log('Price ID:', priceId);  // Log to verify price ID
 
             const newExpDate = new Date();
-            if (priceId === "price_1OmPa9IPN9UEEGy8IZF9grmN") {
+            if (priceId === process.env.STRIPE_PRICE_WEEK) {
                 newExpDate.setDate(newExpDate.getDate() + 7);
-            } else if (priceId === "price_1PAzjiIPN9UEEGy8KKf5GUWO") {
+            } else if (priceId === process.env.STRIPE_PRICE_MONTH) {
                 newExpDate.setDate(newExpDate.getDate() + 30);
             }
 
@@ -353,7 +353,7 @@ app.post('/api/save-arb', async (req, res) => {
 
     if (token == null) return res.sendStatus(401);
 
-    jwt.verify(token, 'siuu', async (err, user) => {
+    jwt.verify(token, process.env.JWT_KEY, async (err, user) => {
         if (err) return res.sendStatus(403);
 
         try {
@@ -409,7 +409,7 @@ app.get('/api/matches', (req, res) => {
 
     if (token == null) return res.sendStatus(401);
 
-    jwt.verify(token, 'siuu', async (err, user) => {
+    jwt.verify(token, process.env.JWT_KEY, async (err, user) => {
         if (err) return res.sendStatus(403);
 
         try {
@@ -455,7 +455,7 @@ app.get('/api/username', (req, res) => {
 
     if (token == null) return res.sendStatus(401);
 
-    jwt.verify(token, 'siuu', (err, user) => {
+    jwt.verify(token, process.env.JWT_KEY, (err, user) => {
         if (err) return res.sendStatus(403);
 
         res.json({ username: user.username });
@@ -540,7 +540,7 @@ app.post('/api/start-free-trial', async (req, res) => {
 
     if (token == null) return res.sendStatus(401);
 
-    jwt.verify(token, 'siuu', async (err, user) => {
+    jwt.verify(token, process.env.JWT_KEY, async (err, user) => {
         if (err) return res.sendStatus(403);
 
         const username = user.username;
@@ -563,72 +563,6 @@ app.post('/api/start-free-trial', async (req, res) => {
             res.status(200).json(updatedUser.rows[0]);
         } catch (err) {
             res.status(500).send(err.message);
-        }
-    });
-});
-app.post('/api/start-paid-trial', async (req, res) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (token == null) return res.sendStatus(401);
-
-    jwt.verify(token, 'siuu', async (err, user) => {
-        if (err) return res.sendStatus(403);
-
-        const username = user.username;
-        const userF = `
-            SELECT email, stripeCustomerId
-            FROM users 
-            WHERE username = $1;
-        `;
-        const userData = await db.query(userF, [username]);
-        const { paymentMethodId } = req.body;
-        if (userData.rows.length === 0) {
-            // No user found with this username
-            return res.status(404).send('User not recognized');
-        }
-        try {
-            let customer;
-            if (userData.stripeCustomerId) {
-                customer = await stripe.customers.retrieve(userData.stripeCustomerId);
-            } else {
-                customer = await stripe.customers.create({
-                    email: userData.rows[0].email,
-                    payment_method: paymentMethodId,
-                    invoice_settings: {
-                        default_payment_method: paymentMethodId,
-                    },
-                });
-                const updateCustomerQuery = `UPDATE users SET stripeCustomerId = $1 WHERE username = $2`;
-                await db.query(updateCustomerQuery, [customer.id, username]);
-            }
-
-            // Assuming you have a predefined price ID for the subscription
-            const priceId = 'price_1OmPa9IPN9UEEGy8IZF9grmN';
-
-            const subscription = await stripe.subscriptions.create({
-                customer: customer.id,
-                items: [{ price: priceId }],
-                expand: ['latest_invoice.payment_intent'],
-            });
-
-            // Update your database to reflect the subscription's start
-            const oneWeekFromNow = new Date();
-            oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7); // Adjust based on your trial period
-            const updateSubscriptionQuery = `
-                UPDATE users 
-                SET proVersion = TRUE, proVersionExpDate = $1 
-                WHERE username = $2
-                RETURNING *;`;
-            const updatedUser = await db.query(updateSubscriptionQuery, [oneWeekFromNow, username]);
-
-            res.status(200).json({
-                subscriptionId: subscription.id,
-                customer: customer.id,
-                user: updatedUser.rows[0]
-            });
-        } catch (error) {
-            console.log(error);
-            res.status(500).send(error.message);
         }
     });
 });
@@ -679,7 +613,7 @@ app.post('/api/login', async (req, res) => {
             return res.status(401).send('Incorrect password');
         }
 
-        const token = jwt.sign({ username: user.username }, "siuu", { expiresIn: '48h' });
+        const token = jwt.sign({ username: user.username }, process.env.JWT_KEY, { expiresIn: '48h' });
 
         res.status(200).json({ token: token });
     } catch (err) {
