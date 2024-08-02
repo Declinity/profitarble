@@ -156,6 +156,7 @@ app.post('/create-checkout-session', async (req, res) => {
 
             const userEmail = userData.rows[0].email;
 
+            console.log("user getting sent?", userId)
             const session = await stripe.checkout.sessions.create({
                 payment_method_types: ['card', 'paypal'],
                 line_items: [{
