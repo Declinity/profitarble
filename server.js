@@ -37,9 +37,13 @@ const apiLimiter = rateLimit({
 });
 
 let transporter = nodemailer.createTransport({
-    host: "localhost",
-    port: 1025,
-    secure: false, // MailHog doesn't use SSL
+    host: "smtp.office365.com",
+    port: 587,
+    secure: false, // true for 465, false for other ports
+    auth: {
+        user: "profitarbtest@outlook.com", // your Outlook email address
+        pass: "Giratina2001!", // your app password
+    },
 });
 
 /* const db = new Pool({
