@@ -155,8 +155,6 @@ app.post('/create-checkout-session', async (req, res) => {
             }
 
             const userEmail = userData.rows[0].email;
-
-            console.log("user getting sent?", userId)
             const session = await stripe.checkout.sessions.create({
                 payment_method_types: ['card', 'paypal'],
                 line_items: [{
@@ -185,6 +183,18 @@ app.post('/create-checkout-session-month', async (req, res) => {
         if (err) return res.sendStatus(403);
         userId = user.username
         try {
+            const userQuery = `
+                SELECT email
+                FROM users 
+                WHERE username = $1;
+            `;
+            const userData = await db.query(userQuery, [userId]);
+
+            if (userData.rows.length === 0) {
+                // No user found with this username
+                return res.status(404).send('User not recognized');
+            }
+            const userEmail = userData.rows[0].email;
             const session = await stripe.checkout.sessions.create({
                 payment_method_types: ['card', 'paypal'],
                 line_items: [{
@@ -194,7 +204,9 @@ app.post('/create-checkout-session-month', async (req, res) => {
                 mode: 'subscription',
                 success_url: `${req.headers.origin}/freeTrial`,
                 cancel_url: `${req.headers.origin}/cancel`,
-                client_reference_id: userId, // Securely pass the user ID
+                client_reference_id: userId,
+                customer_email: userEmail
+
             });
 
             res.json({ url: session.url });
